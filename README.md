@@ -300,6 +300,9 @@ administrator must activate it. Access can later be `Revoked` without deleting t
 
 ## Running it
 
+> **[docs/RUNNING.md](docs/RUNNING.md)** is the full guide — both run paths, the first-account
+> bootstrap, and troubleshooting. What follows is the short version.
+
 ### With Docker (everything)
 
 ```bash
@@ -474,8 +477,12 @@ requirement changes that answer.
 
 ## Not yet done
 
-- **Migrations.** The DbContexts are complete but no EF migrations are generated; the databases are not
-  created on startup. `dotnet ef migrations add InitialSchema` per service is the next step.
+- **First-administrator bootstrap.** Registration always produces a `Pending` `Guest`, so on an empty
+  database nobody can sign in until a row is promoted directly in SQL. A seeding step that creates the
+  first administrator would be the proper fix. See [docs/RUNNING.md](docs/RUNNING.md).
+- **Production migration strategy.** Migrations are applied at startup in Development only. A real
+  deployment needs them run as a separate single-instance step, which is a pipeline change rather than
+  a code one.
 - **File storage.** Photo and attachment upload exist in the monolith and are not yet ported; the
   contracts carry the paths but nothing writes them.
 - **Fault validation endpoint.** Proposed faults are created unvalidated with no administrator route to
