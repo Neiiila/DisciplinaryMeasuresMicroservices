@@ -1,0 +1,125 @@
+name: disciplinary-measures
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  # One SQL Server instance hosting three separate databases. Sharing the server
+  # is a local-development convenience; the databases stay separate because that
+  # is the boundary that matters — no service can query another's tables.
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Your_strong_Passw0rd"
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # ---------------------------------------------------------------------------
+  # Services
+  # ---------------------------------------------------------------------------
+
+  identity:
+    build:
+      context: .
+      dockerfile: src/Services/Identity/Identity.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__IdentityDb: "Server=sql;Database=DisciplinaryMeasures.Identity;User Id=sa;Password=Your_strong_Passw0rd;TrustServerCertificate=True"
+      ConnectionStrings__MessageBroker: "amqp://guest:guest@rabbitmq:5672"
+      # Every service must be given the same key: Identity signs with it and the
+      # others validate against it.
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY to a 32+ character secret}
+    ports:
+      - "5101:8080"
+    depends_on:
+      sql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  sanctions:
+    build:
+      context: .
+      dockerfile: src/Services/Sanctions/Sanctions.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__SanctionsDb: "Server=sql;Database=DisciplinaryMeasures.Sanctions;User Id=sa;Password=Your_strong_Passw0rd;TrustServerCertificate=True"
+      ConnectionStrings__MessageBroker: "amqp://guest:guest@rabbitmq:5672"
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY to a 32+ character secret}
+    ports:
+      - "5102:8080"
+    depends_on:
+      sql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notifications:
+    build:
+      context: .
+      dockerfile: src/Services/Notifications/Notifications.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__NotificationsDb: "Server=sql;Database=DisciplinaryMeasures.Notifications;User Id=sa;Password=Your_strong_Passw0rd;TrustServerCertificate=True"
+      ConnectionStrings__MessageBroker: "amqp://guest:guest@rabbitmq:5672"
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY to a 32+ character secret}
+    ports:
+      - "5103:8080"
+    depends_on:
+      sql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/Gateway.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY to a 32+ character secret}
+      # Service names resolve on the compose network, so the gateway's local
+      # config is overridden with container addresses.
+      ReverseProxy__Clusters__identity__Destinations__primary__Address: "http://identity:8080/"
+      ReverseProxy__Clusters__sanctions__Destinations__primary__Address: "http://sanctions:8080/"
+      ReverseProxy__Clusters__notifications__Destinations__primary__Address: "http://notifications:8080/"
+      Cors__AllowedOrigins__0: "http://localhost:5173"
+    ports:
+      - "5100:8080"
+    depends_on:
+      - identity
+      - sanctions
+      - notifications
+
+volumes:
+  sql-data:
