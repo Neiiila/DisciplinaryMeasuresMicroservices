@@ -51,6 +51,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+await app.MigrateInDevelopmentAsync<IdentityDbContext>();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

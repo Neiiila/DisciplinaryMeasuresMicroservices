@@ -53,6 +53,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+await app.MigrateInDevelopmentAsync<SanctionsDbContext>();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

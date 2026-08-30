@@ -43,6 +43,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+await app.MigrateInDevelopmentAsync<NotificationsDbContext>();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
