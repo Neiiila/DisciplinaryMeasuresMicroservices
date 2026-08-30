@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+artifacts/
+TestResults/
+coverage/
+.env
+appsettings.*.local.json
