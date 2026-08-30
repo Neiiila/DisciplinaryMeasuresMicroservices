@@ -18,4 +18,8 @@
   <Folder Name="/src/Services/Sanctions/">
     <Project Path="src/Services/Sanctions/Sanctions.Api/Sanctions.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Identity.Api.Tests/Identity.Api.Tests.csproj" />
+    <Project Path="tests/Sanctions.Api.Tests/Sanctions.Api.Tests.csproj" />
+  </Folder>
 </Solution>

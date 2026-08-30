@@ -29,27 +29,41 @@ public sealed class SupervisorChainResolver(SanctionsDbContext db) : ISupervisor
     {
         // One query, then walk in memory: the chain is short and the whole
         // directory is small enough that a recursive CTE would not pay for itself.
+        // Inactive people are loaded too, because the walk has to pass through
+        // them to reach the level above.
         var links = await db.Employees
             .AsNoTracking()
-            .Where(e => e.IsActive)
-            .Select(e => new { e.Id, e.SupervisorId })
-            .ToDictionaryAsync(e => e.Id, e => e.SupervisorId, StringComparer.OrdinalIgnoreCase, ct);
+            .Select(e => new { e.Id, e.SupervisorId, e.IsActive })
+            .ToDictionaryAsync(e => e.Id, e => (e.SupervisorId, e.IsActive), StringComparer.OrdinalIgnoreCase, ct);
 
         var chain = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { employeeId };
 
-        var current = links.GetValueOrDefault(employeeId);
+        var current = links.GetValueOrDefault(employeeId).SupervisorId;
+        var steps = 0;
 
-        while (current is not null && chain.Count < MaxDepth)
+        while (current is not null && steps < MaxDepth)
         {
+            steps++;
+
             // Stop on a repeat rather than looping forever.
             if (!seen.Add(current))
             {
                 break;
             }
 
-            chain.Add(current);
-            current = links.GetValueOrDefault(current);
+            var link = links.GetValueOrDefault(current);
+
+            // Someone who has left the organisation is stepped over rather than
+            // routed to: a request assigned to them could never be answered, and
+            // would sit in the chain until it was cancelled. Their own supervisor
+            // inherits the step.
+            if (link.IsActive)
+            {
+                chain.Add(current);
+            }
+
+            current = link.SupervisorId;
         }
 
         return chain;
