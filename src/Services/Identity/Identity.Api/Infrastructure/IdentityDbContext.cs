@@ -1,4 +1,5 @@
 using Identity.Api.Domain;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace Identity.Api.Infrastructure;
@@ -18,6 +19,13 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // The outbox stores pending messages in this service's own database, so
+        // its tables have to be part of this schema — that shared transaction is
+        // the whole point of the pattern.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
         var user = modelBuilder.Entity<User>();
 
         user.ToTable("Users");

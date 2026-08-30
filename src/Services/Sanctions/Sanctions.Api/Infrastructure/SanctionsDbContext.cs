@@ -1,5 +1,9 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Sanctions.Api.Domain;
+
+// MassTransit also defines a Fault<T>, so the domain's Fault is aliased.
+using Fault = Sanctions.Api.Domain.Fault;
 
 namespace Sanctions.Api.Infrastructure;
 
@@ -22,6 +26,13 @@ public sealed class SanctionsDbContext(DbContextOptions<SanctionsDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Outbox tables live in this service's own database; the inbox additionally
+        // deduplicates consumed messages, which is what makes the directory
+        // consumers safe under at-least-once redelivery.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
         var request = modelBuilder.Entity<SanctionRequest>();
 
         request.ToTable("SanctionRequests");
