@@ -125,6 +125,43 @@ Open http://localhost:5173. The gateway already allows that origin.
 
 ---
 
+## Path C — no Docker at all (Windows, LocalDB)
+
+Useful when Docker is unavailable. The three databases run on **SQL Server LocalDB**, which ships with
+Visual Studio and the SQL Server tooling, so nothing is containerised.
+
+The one thing this path cannot provide is **RabbitMQ**. The services start and their HTTP APIs work
+fully — the outbox keeps publishing into each service's own database — but nothing is delivered
+between services until a broker is reachable. Concretely: Identity works end to end, and Sanctions
+rejects a raise with `request.employee_not_found`, because its directory projection is fed by events
+that have not been delivered. Those messages are not lost; they sit in `OutboxMessage` and flush once a
+broker appears.
+
+Create the databases:
+
+```bash
+dotnet tool restore
+```
+
+```bash
+dotnet dotnet-ef database update --project src/Services/Identity/Identity.Api
+```
+
+Repeat for `Sanctions.Api` and `Notifications.Api`. Then run each service with the key and its
+connection string supplied through the environment:
+
+```bash
+Jwt__Key="<32+ character key>" dotnet run --project src/Services/Identity/Identity.Api --no-launch-profile --urls http://localhost:5101
+```
+
+Then `Sanctions.Api` on 5102, `Notifications.Api` on 5103 and `Gateway.Api` on 5100.
+
+> `/health/ready` reports **503** on this path, because MassTransit's bus health check fails without a
+> broker. That is correct — the service genuinely cannot do everything it advertises. The HTTP API still
+> serves requests.
+
+---
+
 ## Path B — infrastructure in Docker, services from your IDE
 
 Better when you are actively changing backend code and want the debugger.
