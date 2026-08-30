@@ -19,7 +19,7 @@ jobs:
     name: Build and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -61,7 +61,7 @@ jobs:
           - { name: notifications, dockerfile: src/Services/Notifications/Notifications.Api/Dockerfile }
           - { name: gateway, dockerfile: src/Gateway/Gateway.Api/Dockerfile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v3
 
@@ -82,7 +82,7 @@ jobs:
     name: Validate compose file
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Validate
         run: docker compose config --quiet
