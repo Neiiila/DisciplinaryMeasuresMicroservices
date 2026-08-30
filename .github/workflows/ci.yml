@@ -69,7 +69,7 @@ jobs:
       # The matrix runs them in parallel and fail-fast is off, so one broken
       # Dockerfile does not hide the state of the other three.
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.service.dockerfile }}
