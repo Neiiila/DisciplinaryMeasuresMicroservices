@@ -38,7 +38,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Security">
-    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
   </ItemGroup>
 
   <!--
